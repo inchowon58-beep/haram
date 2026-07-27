@@ -696,18 +696,23 @@ def generate_batch(
         existing = {"slugs": [], "updatedAt": ""}
         idx_path = os.path.join(sync_public, "index.json")
         if os.path.isfile(idx_path):
-            with open(idx_path, encoding="utf-8") as f:
+            with open(idx_path, encoding="utf-8-sig") as f:
                 existing = json.load(f)
+        # Next.js SeoIndex 는 slugs 배열을 사용 (pages 키는 무시)
+        if not isinstance(existing.get("slugs"), list):
+            existing["slugs"] = []
         for slug in slugs:
             src = os.path.join(pages_dir, f"{slug}.json")
             dst = os.path.join(pub_pages, f"{slug}.json")
-            with open(src, encoding="utf-8") as f:
+            with open(src, encoding="utf-8-sig") as f:
                 data = f.read()
             with open(dst, "w", encoding="utf-8") as f:
                 f.write(data)
             if slug not in existing["slugs"]:
                 existing["slugs"].insert(0, slug)
         existing["updatedAt"] = datetime.utcnow().isoformat() + "Z"
+        # pages 키 잔여분 제거 (구버전/잘못된 스키마 정리)
+        existing.pop("pages", None)
         with open(idx_path, "w", encoding="utf-8") as f:
             json.dump(existing, f, ensure_ascii=False, indent=2)
     return urls

@@ -9,11 +9,20 @@ import { put, get } from "@vercel/blob";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = (
+  process.env.HARAM_PROJECT_ROOT ||
   process.env.DALBIT_PROJECT_ROOT ||
   process.env.WHITEPARK_PROJECT_ROOT ||
   process.cwd() ||
   path.resolve(__dirname, "../..")
 ).replace(/[\\/]+$/, "");
+
+function stripBom(text) {
+  return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+}
+
+function readJsonFile(file) {
+  return JSON.parse(stripBom(fs.readFileSync(file, "utf8")));
+}
 
 function loadEnvLocal() {
   for (const name of [".env.local", ".env"]) {
@@ -109,7 +118,7 @@ async function main() {
   const indexRaw = await readBlobText("seo-data/index.json", token);
   if (indexRaw) {
     try {
-      slugs = JSON.parse(indexRaw).slugs || [];
+      slugs = JSON.parse(stripBom(indexRaw)).slugs || [];
     } catch {
       slugs = [];
     }
@@ -117,7 +126,7 @@ async function main() {
 
   const uploaded = [];
   for (const file of files) {
-    const page = JSON.parse(fs.readFileSync(file, "utf8"));
+    const page = readJsonFile(file);
     const slug = page.slug;
     if (!slug) continue;
     await put(`seo-data/pages/${slug}.json`, JSON.stringify(page), putOpts);
