@@ -75,7 +75,7 @@ export default function AdminClient() {
   }
 
   const loadSettings = useCallback(async () => {
-    const res = await fetch("/api/admin/settings");
+    const res = await fetch("/api/admin/settings", { credentials: "include" });
     if (!res.ok) return;
     const data = await res.json();
     if (data.settings) setQuota(data.settings);
@@ -88,7 +88,9 @@ export default function AdminClient() {
   }, []);
 
   const loadPages = useCallback(async (p = 1) => {
-    const res = await fetch(`/api/admin/pages?page=${p}`);
+    const res = await fetch(`/api/admin/pages?page=${p}`, {
+      credentials: "include",
+    });
     if (res.status === 401) {
       setAuthed(false);
       return;
@@ -104,7 +106,9 @@ export default function AdminClient() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch("/api/admin/pages?page=1");
+        const res = await fetch("/api/admin/pages?page=1", {
+          credentials: "include",
+        });
         if (res.ok) {
           const data = await res.json();
           setItems(data.items || []);
@@ -131,6 +135,7 @@ export default function AdminClient() {
       try {
         await fetch("/api/admin/settings", {
           method: "POST",
+          credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "save-gemini", geminiApiKey: value }),
         });
@@ -153,6 +158,7 @@ export default function AdminClient() {
     setLoginError("");
     const res = await fetch("/api/auth/login", {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
     });
@@ -167,7 +173,7 @@ export default function AdminClient() {
   }
 
   async function onLogout() {
-    await fetch("/api/auth/logout", { method: "POST" });
+    await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
     setAuthed(false);
     setMasterOpen(false);
   }
@@ -186,6 +192,7 @@ export default function AdminClient() {
     try {
       const res = await fetch("/api/admin/settings", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "verify-master",
@@ -217,6 +224,7 @@ export default function AdminClient() {
     try {
       const res = await fetch("/api/admin/settings", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "save-limits",
@@ -244,6 +252,7 @@ export default function AdminClient() {
     try {
       const res = await fetch("/api/admin/publish", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           keyword,
@@ -252,6 +261,10 @@ export default function AdminClient() {
         }),
       });
       const data = await res.json();
+      if (res.status === 401) {
+        setAuthed(false);
+        throw new Error(data.error || "로그인이 필요합니다. 다시 로그인해 주세요.");
+      }
       if (!res.ok) throw new Error(data.error || "발행 실패");
       setMessage(
         `발행 완료: ${data.path}` +

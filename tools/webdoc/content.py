@@ -35,11 +35,11 @@ LOGO = "/logo.png"
 # ------------------------------------------------------------------
 
 
-def _seed_int(keyword: str, idx: int, salt: str = "haram") -> int:
+def _seed_int(keyword: str, idx: int, salt: str = "haram-v2") -> int:
     return int(hashlib.md5(f"{keyword}|{idx}|{salt}".encode("utf-8")).hexdigest()[:8], 16)
 
 
-def _rng(keyword: str, idx: int, salt: str = "haram") -> random.Random:
+def _rng(keyword: str, idx: int, salt: str = "haram-v2") -> random.Random:
     return random.Random(_seed_int(keyword, idx, salt))
 
 
@@ -90,20 +90,20 @@ VERB_WORDS = ["안내", "상담", "조율"]
 
 HERO_SUBTITLES = [
     "Nationwide Surrender Care · Free Adoption Matching",
-    "전국 어디서나, 이별 뒤에도 좋은 인연은 이어집니다",
-    "Safe Intake, Warm Match - {brand}",
+    "전국 어디서나, 버려지는 반려동물 Zero, 책임 분양으로 이어집니다",
+    "Care First, Match with Heart - {brand}",
     "책임감 있는 파양 상담과 무료분양 매칭",
-    "Every Goodbye Finds a New Beginning",
+    "A Safer Next Chapter for Every Dog",
     "전국파양입소 · 무료분양 전문 상담",
-    "A Safe Next Home for Every Dog",
+    "Responsible Adoption for Every Dog",
 ]
 
 HERO_LINE2_POOL = [
-    "새 가족을 만나요",
-    "이별 뒤에도 좋은 인연은 이어집니다",
-    "전국 어디서나 함께 걷습니다",
-    "따뜻한 다음 걸음을 함께합니다",
-    "혼자 고민하지 마세요",
+    "책임 분양으로 이어집니다",
+    "버려지는 반려동물 Zero, 책임 분양으로 이어집니다",
+    "전국 어디서나 책임 상담합니다",
+    "안락한 보호와 좋은 가족을 연결합니다",
+    "포기하지 말고 먼저 상담하세요",
 ]
 
 HERO_BADGE_POOL = [
@@ -173,7 +173,7 @@ CTA_TEMPLATES = [
     "{kw} 상담은 전화 한 통이면 충분합니다 - {phone} · {brand}",
     "파양·입양 상담 {phone} - {brand}",
     "{kw}, 지금 바로 {phone}로 문의하세요 - {brand}",
-    "혼자 고민하지 마세요. {phone} · {brand}가 함께합니다",
+    "포기하지 말고 먼저 상담하세요. {phone} · {brand}가 함께합니다",
 ]
 
 TITLE_TEMPLATES = [

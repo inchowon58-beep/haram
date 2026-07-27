@@ -17,7 +17,10 @@ import {
  */
 export async function POST(req: Request) {
   if (!(await isAuthenticated())) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      { error: "세션이 만료되었거나 로그인이 필요합니다. 다시 로그인해 주세요." },
+      { status: 401 }
+    );
   }
   try {
     const quota = await checkAdminPublishQuota();

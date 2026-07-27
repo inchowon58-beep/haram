@@ -4,24 +4,17 @@ import type { SeoPage } from "./seo-pages";
 import { slugifyKeyword } from "./seo-pages";
 
 /**
- * 지역 키워드형 SEO 랜딩 페이지 생성기.
- *
- * ilsan(https://shelter.cattery.co.kr/ilsan) 구조 - 키워드 H1, 미션, 6개 서비스 스토리,
- * 보호시설, 3가지 약속, 4단계 절차, 7개 FAQ, 연락 CTA - 를 기준으로 삼되,
- * 더 촘촘한 섹션 구성과 관련 검색의도 섹션을 추가해 상회하는 것을 목표로 한다.
- *
- * 같은 키워드라도 pageIndex가 다르면 결과가 달라지도록, 문자열 해시 기반 시드로
- * 문구 배열에서 값을 고르고 중간 섹션 순서를 셔플한다 (로컬 대량 발행 시 중복 방지).
+ * 하람보호소 전용 SEO 랜딩 생성기.
+ * 구조(미션·서비스·보호·약속·절차·FAQ·CTA)는 유지하되,
+ * 달빛쉘터와 문구·톤·섹션 제목·시드가 겹치지 않도록 전부 재작성.
  */
 
-/** 문자열 → 32bit 해시 */
 function hash(s: string): number {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
   return Math.abs(h);
 }
 
-/** 시드 기반 의사난수 생성기 (서버/클라이언트 동일 결과) */
 function mulberry32(seed: number) {
   return function () {
     let t = (seed += 0x6d2b79f5);
@@ -35,7 +28,6 @@ function pick<T>(arr: readonly T[], seed: number): T {
   return arr[seed % arr.length];
 }
 
-/** 시드 고정 셔플 (Fisher-Yates) - 매 keyword/pageIndex 조합마다 다른 순서 */
 function seededShuffle<T>(arr: readonly T[], seed: number): T[] {
   const rng = mulberry32(seed);
   const out = [...arr];
@@ -46,7 +38,6 @@ function seededShuffle<T>(arr: readonly T[], seed: number): T[] {
   return out;
 }
 
-/** 한글 음절의 받침(종성) 유무 판별 - 조사(은/는, 을/를, 과/와) 선택용 */
 function hasBatchim(word: string): boolean {
   const trimmed = word.trim();
   const last = trimmed.charAt(trimmed.length - 1);
@@ -64,20 +55,14 @@ function eulReul(word: string): string {
 function gwaWa(word: string): string {
   return hasBatchim(word) ? "과" : "와";
 }
-/** 로/으로 - 받침 있으면 '으로', 없거나 'ㄹ' 받침이면 '로' */
 function roEuro(word: string): string {
   const trimmed = word.trim();
   const last = trimmed.charAt(trimmed.length - 1);
   const code = last.charCodeAt(0);
-  if (code >= 0xac00 && code <= 0xd7a3 && (code - 0xac00) % 28 === 8) return "로"; // ㄹ받침
+  if (code >= 0xac00 && code <= 0xd7a3 && (code - 0xac00) % 28 === 8) return "로";
   return hasBatchim(word) ? "으로" : "로";
 }
 
-/**
- * {kw} 뒤에 붙는 조사를 키워드의 받침 유무에 맞게 자동 교정한다.
- * 문구 풀은 "{kw}는", "{kw}를", "{kw}와"처럼 자연스럽게 작성해 두면
- * 실제 치환 시점에 키워드에 맞는 조사(은/는, 을/를, 과/와)로 보정된다.
- */
 function fill(template: string, kw: string, brand: string, phone: string): string {
   return template
     .replace(/\{kw\}(는|은)/g, `${kw}${eunNeun(kw)}`)
@@ -89,128 +74,120 @@ function fill(template: string, kw: string, brand: string, phone: string): strin
     .replace(/\{phone\}/g, phone);
 }
 
-/* ------------------------------------------------------------------ */
-/* 문구 풀 - 시드에 따라 조합이 달라져 페이지마다 다른 본문을 만든다     */
-/* ------------------------------------------------------------------ */
-
-const TONE_WORDS = ["차분하게", "꼼꼼하게", "따뜻하게", "세심하게", "신중하게"] as const;
-const VERB_WORDS = ["안내", "상담", "조율"] as const;
+const TONE_WORDS = ["정성스럽게", "차분히", "꼼꼼히", "책임감 있게", "세심히"] as const;
+const VERB_WORDS = ["안내", "상담", "확인"] as const;
 
 const HERO_SUBTITLES = [
-  "Nationwide Surrender Care · Free Adoption Matching",
-  "전국 어디서나, 이별 뒤에도 좋은 인연은 이어집니다",
-  "Safe Intake, Warm Match - {brand}",
-  "책임감 있는 파양 상담과 무료분양 매칭",
-  "Every Goodbye Finds a New Beginning",
-  "전국파양입소 · 무료분양 전문 상담",
-  "A Safe Next Home for Every Dog",
+  "Responsible Adoption · Zero Abandoned Pets",
+  "버려지는 반려동물 Zero, 책임 분양으로 이어집니다",
+  "Care First, Match with Heart - {brand}",
+  "파양입소부터 안심 무료분양까지 한 곳에서",
+  "A Safer Next Chapter for Every Dog",
+  "전국 파양입소 · 책임 있는 새 가족 매칭",
+  "아이의 남은 생을 지키는 선택",
 ] as const;
 
 const HERO_LINE2_POOL = [
-  "새 가족을 만나요",
-  "이별 뒤에도 좋은 인연은 이어집니다",
-  "전국 어디서나 함께 걷습니다",
-  "따뜻한 다음 걸음을 함께합니다",
-  "혼자 고민하지 마세요",
+  "책임 분양으로 이어집니다",
+  "포기하지 말고 먼저 상담하세요",
+  "안락한 보호와 좋은 가족을",
+  "끝까지 함께 책임집니다",
+  "전국 어디서나 전화 한 통이면",
 ] as const;
 
 const HERO_BADGE_POOL = [
-  "전국파양입소 · {brand}",
-  "전국 무료분양 · {brand}",
-  "24시간 전화상담 · {brand}",
+  "책임분양 · {brand}",
   "안락사 없는 보호 · {brand}",
+  "전국 파양입소 · {brand}",
+  "365일 전화상담 · {brand}",
 ] as const;
 
 const LEAD_INS = [
-  "{kw}를 고민 중이시라면, 혼자 결정하지 마시고 먼저 전화로 상황을 나눠보세요.",
-  "{kw} 검색으로 이 페이지를 찾으셨다면, 지금이 가장 정확한 정보를 확인할 때입니다.",
-  "{kw}는 아이와 보호자님 모두에게 신중함이 필요한 과정입니다. {brand}가 함께합니다.",
-  "{kw}를 알아보고 계신 보호자님께, 전국 어디서든 가능한 상담 방법을 안내드립니다.",
-  "{kw}, 급하게 결정하지 않으셔도 됩니다. 전화 한 통으로 절차부터 천천히 확인하세요.",
+  "{kw}를 앞두고 막막하시다면, 먼저 {brand}에 상황을 말씀해 주세요. 혼자 결정하지 않으셔도 됩니다.",
+  "{kw}로 검색해 들어오셨다면, 직거래·방치보다 안전한 다음 선택지를 확인해 보세요.",
+  "{kw}는 보호자와 아이 모두의 인생이 걸린 일입니다. {brand}가 책임 분양 기준으로 안내합니다.",
+  "{kw} 문의는 신청서 없이 전화만으로 충분합니다. 전국 어디서나 동일하게 상담받으실 수 있습니다.",
+  "{kw}, 급하더라도 한 번만 더 점검해 주세요. 잘못된 맡김은 아이에게 돌이킬 수 없는 상처를 남깁니다.",
 ] as const;
 
 const MISSION_H2 = [
-  "{kw}, 외로운 결정이 되지 않도록 함께합니다",
-  "{kw}, 왜 {brand} 상담이 필요할까요",
-  "{kw}, 신중하게 그러나 망설이지 않도록",
-  "{kw}를 고민하는 보호자님께 드리는 안내",
-  "믿을 수 있는 {kw} 상담, {brand}가 함께합니다",
-  "{kw} 전, 꼭 확인해야 할 것들",
+  "{kw}, 버려지지 않는 선택을 함께합니다",
+  "왜 {brand}에서 {kw} 상담을 받아야 할까요",
+  "{kw} 전, 반드시 알아둘 안전 기준",
+  "{kw}를 고민 중인 보호자님께 드리는 안내",
+  "{brand}의 책임 분양 · {kw} 안내",
+  "{kw}, 아이 중심의 다음 걸음",
 ] as const;
 
 const FACILITY_H2 = [
-  "{kw} 보호·시설 안내",
-  "안전하게 지내는 {brand} 보호 환경",
-  "{kw} 이후, 아이가 머무는 보호 공간",
-  "청결하고 안전한 {brand}의 보호 시설",
+  "{kw} 후 아이가 지내는 보호 환경",
+  "{brand}가 지키는 안락한 보호 기준",
+  "{kw} 입소 이후의 일상 케어",
+  "산책·목욕·건강관리가 이어지는 보호 공간",
 ] as const;
 
 const RELATED_H2 = [
-  "{kw}와 함께 찾는 검색어",
-  "{kw} 보호자님이 함께 확인하는 정보",
-  "{kw} 관련 검색 의도 모아보기",
-  "{kw}만큼 자주 찾는 키워드",
+  "{kw}와 함께 검색되는 키워드",
+  "{kw} 보호자님이 자주 확인하는 주제",
+  "{kw} 관련 검색 의도 정리",
+  "{kw} 전에 같이 보면 좋은 검색어",
 ] as const;
 
 const SERVICES_H2 = [
-  "{brand}의 핵심 서비스 6가지",
-  "{kw} 상담부터 매칭까지, {brand} 서비스 안내",
-  "{kw} 이후 이어지는 {brand}의 케어 단계",
+  "{brand}가 안내하는 6가지 핵심 케어",
+  "{kw}부터 매칭까지, {brand} 서비스",
+  "입소·보호·분양이 이어지는 {brand} 프로세스",
 ] as const;
 
 const PROMISE_TITLE_SETS = [
-  ["따뜻하게", "오래", "솔직하게"],
-  ["세심하게", "끝까지", "투명하게"],
-  ["신중하게", "꾸준히", "정직하게"],
-  ["차분하게", "책임감 있게", "명확하게"],
+  ["안락하게", "투명하게", "끝까지"],
+  ["안전하게", "성실히", "책임지고"],
+  ["세심하게", "정직하게", "꾸준히"],
+  ["신중하게", "따뜻하게", "명확하게"],
 ] as const;
 
 const PROMISE_H2 = [
-  "{brand}의 세 가지 약속",
-  "{kw} 상담에서 지키는 세 가지 약속",
-  "한 번도 깨진 적 없는 세 가지 약속",
+  "{brand}의 세 가지 책임",
+  "{kw} 상담에서 지키는 약속",
+  "아이 중심의 세 가지 기준",
 ] as const;
 
 const PROCESS_H2 = [
-  "{kw} 진행 4단계",
-  "처음이라 어려우신가요? 4단계로 안내합니다",
-  "{brand}와 함께하는 4단계 절차",
+  "{kw} 진행 순서 4단계",
+  "처음이어도 어렵지 않은 4단계 안내",
+  "{brand} {kw} 이용 절차",
 ] as const;
 
 const CTA_TEMPLATES = [
-  "{kw} 상담은 전화 한 통이면 충분합니다 - {phone} · {brand}",
-  "파양·입양 상담 {phone} - {brand}",
-  "{kw}, 지금 바로 {phone}로 문의하세요 - {brand}",
-  "혼자 고민하지 마세요. {phone} · {brand}가 함께합니다",
+  "{kw} 문의는 {phone} · {brand}",
+  "파양입소·무료분양 상담 {phone}",
+  "{kw}, 지금 {phone}로 책임 상담하세요 - {brand}",
+  "직거래·방치 대신 {phone} · {brand}",
 ] as const;
 
 const TITLE_TEMPLATES = [
-  "{kw} | {brand} 전국 파양입소·무료분양 상담",
-  "{kw} 안내 | {brand} - 전국 어디서나 파양·분양",
-  "{brand} {kw} - 전국파양입소 · 무료분양 매칭",
+  "{kw} | {brand} 책임분양·전국 파양입소 상담",
+  "{kw} 안내 | {brand} - 안락사 없는 보호·무료분양",
+  "{brand} {kw} - 버려지는 반려동물 Zero",
 ] as const;
 
 const RELATED_SUFFIXES = [
   "보호소",
   "무료분양",
-  "입양",
-  "보호센터",
+  "입양상담",
+  "입소비용",
   "임시보호",
-  "분양문의",
-  "유기견센터",
+  "책임분양",
+  "유기견입양",
 ] as const;
 
 const GENERIC_RELATED = [
   "강아지무료분양",
-  "유기견입양",
-  "전국파양입소",
-  "강아지보호소",
+  "강아지파양입소",
+  "안락사없는보호소",
+  "유기견보호소",
   "반려견파양상담",
 ] as const;
-
-/* ------------------------------------------------------------------ */
-/* 6가지 핵심 서비스 - 파양상담·보호소연계·입소케어·무료분양매칭·방문픽업·사후안내 */
-/* ------------------------------------------------------------------ */
 
 type ServiceDef = {
   key: string;
@@ -221,45 +198,41 @@ type ServiceDef = {
 const SERVICE_DEFS: readonly ServiceDef[] = [
   {
     key: "counsel",
-    titles: ["{kw} 파양 상담", "{kw} 전화 상담", "{kw} 1:1 사전 상담"],
+    titles: ["{kw} 전화 상담", "{kw} 사전 상담", "{kw} 상황 맞춤 상담"],
     desc: (kw, brand, phone, tone) =>
-      `갑작스러운 상황으로 ${kw}${eulReul(kw)} 고민하신다면, ${brand}가 사정을 ${tone} 듣고 절차와 준비물을 안내합니다. 상담 신청서 없이 전화(${phone}) 한 통이면 충분합니다.`,
+      `${kw}${eulReul(kw)} 고민 중이라면 ${brand}가 사유와 아이 상태를 ${tone} 듣고, 입소·보호·분양 중 어떤 길이 맞는지 먼저 정리해 드립니다. 문의는 ${phone}입니다.`,
   },
   {
-    key: "shelterLink",
-    titles: ["보호소 연계 안내", "전국 보호소 네트워크 연계", "협력 보호소 매칭"],
+    key: "safeIntake",
+    titles: ["안전한 파양 입소", "검증된 입소 절차", "투명한 입소 안내"],
     desc: (kw, brand) =>
-      `${kw} 이후에는 전국 협력 보호소와 연계해 아이가 안심할 수 있는 환경에서 지낼 수 있도록 돕습니다. 특정 지역에 국한되지 않고 전국 어디서나 연계가 가능합니다.`,
+      `개인 직거래나 검증되지 않은 시설과 달리, ${brand}는 ${kw} 입소 절차·비용을 사전에 투명하게 안내하고 아이 중심의 보호로 연결합니다.`,
   },
   {
     key: "intakeCare",
-    titles: ["입소 케어", "입소 후 건강·일상 케어", "입소 케어 프로그램"],
+    titles: ["안락한 입소 케어", "산책·목욕·건강 케어", "스트레스 완화 케어"],
     desc: (kw, brand, _phone, tone) =>
-      `입소 후에는 건강 상태 확인, 목욕, 산책 등 일상 케어를 ${tone} 이어가며, ${kw} 이후 아이가 겪을 수 있는 스트레스를 최소화합니다.`,
+      `입소 후에는 산책·목욕·식사·기본 건강 확인을 ${tone} 이어가며 ${kw} 이후 아이가 겪는 불안을 줄입니다. 필요 시 생활 근황도 공유합니다.`,
   },
   {
     key: "freeAdoptionMatch",
-    titles: ["무료분양 매칭", "책임 입양 매칭", "새 가족 매칭 프로그램"],
+    titles: ["책임 무료분양", "성향 맞춤 매칭", "새 가족 책임 연결"],
     desc: (kw, brand) =>
-      `보호 중인 아이는 생활 환경과 반려 의지를 확인하는 사전 상담을 거쳐, 책임감 있는 가정과 무료분양으로 연결됩니다. ${kw} 문의도 같은 절차로 진행됩니다.`,
+      `무료분양이어도 생활 환경·양육 의지를 확인한 뒤 매칭합니다. ${kw}로 들어온 아이가 다시 파양되지 않도록 ${brand}가 책임 분양 기준을 지킵니다.`,
   },
   {
     key: "pickup",
-    titles: ["방문 픽업 조율", "전국 방문 픽업 안내", "일정 맞춤 픽업"],
+    titles: ["전국 방문 픽업", "일정 맞춤 이동 조율", "방문 입소 지원"],
     desc: (kw, brand) =>
-      `거동이 어렵거나 이동이 힘든 경우 일정을 맞춰 방문 픽업을 조율합니다. ${kw} 절차 중 이동 문제로 고민하지 않으셔도 됩니다.`,
+      `이동이 어려운 경우 일정을 맞춰 방문 픽업을 조율합니다. ${kw} 때문에 멀리 이동하기 어려우셔도 전국 기준으로 방법을 함께 찾습니다.`,
   },
   {
     key: "afterCare",
-    titles: ["사후 안내 및 안부 확인", "입양 후 사후 관리", "꾸준한 안부 확인"],
+    titles: ["사후 관리·재보호", "입양 후 안부 확인", "끝까지 책임 케어"],
     desc: (kw, brand) =>
-      `입양 이후에도 새 가정과 정기적으로 안부를 확인하며, ${kw}${roEuro(kw)} 시작된 인연이 끝까지 책임감 있게 이어지도록 ${brand}가 돕습니다.`,
+      `매칭 후에도 안부를 확인하고, 혹여 재파양이 발생하면 다시 보호합니다. ${kw}${roEuro(kw)} 시작된 인연을 ${brand}가 끝까지 챙깁니다.`,
   },
 ];
-
-/* ------------------------------------------------------------------ */
-/* FAQ 풀 - 질문 배리에이션 + 답변                                     */
-/* ------------------------------------------------------------------ */
 
 type FaqDef = {
   questions: readonly string[];
@@ -269,80 +242,77 @@ type FaqDef = {
 const FAQ_DEFS: readonly FaqDef[] = [
   {
     questions: [
-      "{kw} 상담은 어떻게 하나요?",
-      "{kw} 문의는 어떤 방법으로 하나요?",
-      "{kw} 상담 신청은 어떻게 진행되나요?",
+      "{kw} 상담은 어떻게 시작하나요?",
+      "{kw} 문의 방법이 궁금해요",
+      "{kw}는 어디로 연락하면 되나요?",
     ],
     answer: (kw, brand, phone) =>
-      `상담 폼 없이 ${phone} 전화로만 접수합니다. 견종·나이·${kw} 사유를 알려주시면 ${brand}가 절차와 준비 사항을 안내합니다.`,
+      `${phone}으로 전화해 주세요. 견종·나이·건강·${kw} 사유를 말씀주시면 ${brand}가 절차와 준비 사항을 바로 안내합니다. 별도 신청서는 없습니다.`,
   },
   {
     questions: [
-      "{kw}는 전국 어디서나 가능한가요?",
-      "{kw} 상담을 받으려면 방문해야 하나요?",
-      "지방에서도 {kw} 상담이 가능한가요?",
+      "전국 어디서나 {kw}가 가능한가요?",
+      "지방에서도 {kw} 상담을 받을 수 있나요?",
+      "방문 없이도 {kw} 진행이 되나요?",
     ],
     answer: (kw, brand) =>
-      `가능합니다. ${brand}는 전국파양입소 및 무료분양을 원칙으로 하며, 거주 지역과 관계없이 전화 상담과 방문 픽업 조율을 지원합니다.`,
+      `네. ${brand}는 특정 매장 주소에 묶이지 않고 전국 파양입소·무료분양을 안내합니다. 전화 상담 후 방문 또는 픽업 일정을 조율합니다.`,
   },
   {
     questions: [
-      "무료분양은 어떤 절차로 진행되나요?",
-      "{kw} 이후 무료분양 절차가 궁금해요",
-      "새 가족 매칭은 어떻게 이뤄지나요?",
+      "무료분양은 정말 분양비가 없나요?",
+      "{kw} 이후 무료분양 조건이 있나요?",
+      "책임 분양은 무엇이 다른가요?",
     ],
     answer: (kw, brand) =>
-      `보호중인 아이 확인 후 전화 상담을 통해 생활 환경과 반려 의지를 확인하고, 책임감 있는 입양을 위한 매칭을 진행합니다.`,
+      `새 가족 연결 시 별도 분양비는 받지 않습니다. 다만 재파양을 막기 위해 생활 환경과 양육 의지를 확인하는 사전 상담은 필수입니다.`,
   },
   {
     questions: [
-      "{kw} 전 준비물이 있나요?",
-      "입소 전 미리 챙겨야 할 것이 있나요?",
-      "{kw} 입소 시 필요한 서류가 있나요?",
+      "개인 직거래와 무엇이 다른가요?",
+      "소규모 시설에 맡기는 것보다 나은가요?",
+      "{kw} 시 피해야 할 방법이 있나요?",
     ],
     answer: (kw, brand) =>
-      `별도 서류는 필요 없습니다. 다만 접종·건강 기록이 있다면 상담 시 함께 안내해 주시면 ${kw} 이후 케어 계획을 세우는 데 도움이 됩니다.`,
+      `직거래·검증되지 않은 시설은 악용·과밀·행방 불명 위험이 큽니다. ${brand}는 입소 케어·맞춤 매칭·재보호까지 기록과 상담으로 이어갑니다.`,
   },
   {
     questions: [
-      "견종이나 나이 제한이 있나요?",
-      "{kw} 상담에 견종 제한이 있나요?",
-      "노령견도 {kw} 상담이 가능한가요?",
+      "입소 전 준비물이 필요한가요?",
+      "{kw} 때 접종 기록이 있어야 하나요?",
+      "서류가 꼭 필요한가요?",
     ],
     answer: (kw, brand) =>
-      `견종과 나이에 관계없이 문의하실 수 있습니다. ${brand}는 소형견부터 대형견, 노령견까지 상황에 맞춰 상담해 드립니다.`,
+      `필수 서류는 없습니다. 접종·진료 기록이 있으면 상담 시 알려 주시면 ${kw} 이후 케어 계획에 도움이 됩니다.`,
   },
   {
     questions: [
-      "입양 후에도 연락이 가능한가요?",
-      "매칭 이후 사후관리도 해주시나요?",
-      "{kw} 이후에도 안부를 확인할 수 있나요?",
+      "노령견·대형견도 상담 가능한가요?",
+      "견종 제한이 있나요?",
+      "어린 강아지도 {kw} 문의가 되나요?",
     ],
     answer: (kw, brand) =>
-      `네, 새 가정과의 사후 관리를 위해 정기적으로 안부를 확인합니다. ${kw}${roEuro(kw)} 이어진 인연이 새 가정에서도 잘 지낼 수 있도록 지속적으로 지원합니다.`,
+      `견종·나이 제한 없이 상담합니다. 소형견부터 대형견·노령견까지 상황에 맞춰 입소와 매칭을 안내합니다.`,
   },
   {
     questions: [
-      "방문 픽업도 가능한가요?",
-      "이동이 어려운 경우 어떻게 하나요?",
-      "{kw} 진행 중 방문 픽업 요청이 가능한가요?",
+      "입양 후에도 연락할 수 있나요?",
+      "재파양되면 어떻게 되나요?",
+      "{kw} 이후 근황을 알 수 있나요?",
     ],
     answer: (kw, brand, phone) =>
-      `거동이 어렵거나 이동 수단이 없는 경우 일정을 조율해 방문 픽업을 도와드립니다. ${phone}으로 상황을 말씀해 주세요.`,
+      `입양 후에도 안부 확인이 가능하며, 재파양 시 다시 보호합니다. 궁금한 점은 ${phone}으로 언제든 문의해 주세요.`,
   },
 ];
-
-/* ------------------------------------------------------------------ */
-/* 메인 생성 함수                                                      */
-/* ------------------------------------------------------------------ */
 
 export function generateRegionalSeoPage(keyword: string, pageIndex = 1): SeoPage {
   const kw = keyword.trim() || "강아지파양";
   const brand = SITE.brand;
   const phone = SITE.phone;
-  const seed = hash(`${kw}|${pageIndex}|${brand}`);
-  const seed2 = hash(`${kw}|${pageIndex}|v2`);
-  const seed3 = hash(`${kw}|${pageIndex}|v3`);
+  // 달빛과 다른 시드 솔트 → 섹션 순서·문구 조합이 겹치지 않음
+  const seed = hash(`${kw}|${pageIndex}|haram-v2|${brand}`);
+  const seed2 = hash(`${kw}|${pageIndex}|haram-care`);
+  const seed3 = hash(`${kw}|${pageIndex}|haram-match`);
 
   const tone = pick(TONE_WORDS, seed);
   const tone2 = pick(TONE_WORDS, seed2);
@@ -350,66 +320,58 @@ export function generateRegionalSeoPage(keyword: string, pageIndex = 1): SeoPage
 
   const t = (template: string) => fill(template, kw, brand, phone);
 
-  /* ---------- 메타 / 히어로 ---------- */
   const title = t(pick(TITLE_TEMPLATES, seed));
-  const metaDescription = `${kw} 안내 - ${brand}는 전국 어디서나 강아지 파양 ${verb}부터 무료분양 매칭까지 책임집니다. 이민·이사·건강 문제 등 피치 못한 사정도 ${tone} 들어드립니다. 문의 ${phone}. 전국파양입소·무료분양 가능.`;
+  const metaDescription = `${kw} - ${brand}는 버려지는 반려동물 Zero를 목표로 전국 파양입소와 책임 무료분양을 안내합니다. 직거래·방치 대신 안락한 보호와 맞춤 매칭으로 이어드립니다. 문의 ${phone}.`;
   const relatedIntents = seededShuffle(
-    [
-      ...RELATED_SUFFIXES.map((s) => `${kw} ${s}`),
-      ...GENERIC_RELATED,
-    ],
+    [...RELATED_SUFFIXES.map((s) => `${kw} ${s}`), ...GENERIC_RELATED],
     seed3
   ).slice(0, 8);
-  const metaKeywords = [kw, brand, ...relatedIntents.slice(0, 6), "전국파양입소", "강아지입양"]
+  const metaKeywords = [kw, brand, ...relatedIntents.slice(0, 6), "책임분양", "안락사없는보호소"]
     .filter((v, i, arr) => arr.indexOf(v) === i)
     .slice(0, 12)
     .join(", ");
 
-  const h1 = `${kw} - ${brand} 전국 파양입소·무료분양 상담`;
+  const h1 = `${kw} | ${brand} 책임분양 · 전국 파양입소`;
   const heroTitleLine1 = kw;
   const heroTitleLine2 = pick(HERO_LINE2_POOL, seed2);
   const heroBadge = t(pick(HERO_BADGE_POOL, seed3));
   const heroSubtitle = t(pick(HERO_SUBTITLES, seed));
-  const heroBar = `${kw} 상담, 전국 어디서나 ${phone}`;
+  const heroBar = `파양입소·무료분양 문의 ${phone}`;
 
-  /* ---------- 섹션 1: 소개 / 미션 ---------- */
   const leadIn = t(pick(LEAD_INS, seed2));
   const missionSection = {
     h2: t(pick(MISSION_H2, seed)),
     paragraphs: [
       leadIn,
-      `${kw}${eunNeun(kw)} 단순한 이별이 아니라 아이의 다음 삶을 책임지는 중요한 결정입니다. ${brand}는 보호자님의 힘든 선택을 ${tone} 존중하며, 아이가 안전하게 새 가족을 만날 수 있도록 상담부터 매칭까지 함께합니다.`,
-      `이민·이사·건강 문제·주거 변경 등 피치 못한 사정으로 ${kw}${eulReul(kw)} 고민하신다면, 절차와 준비물을 먼저 전화로 ${verb}받으실 수 있습니다. 상담 신청서 없이 전화 한 통으로 충분합니다.`,
-      `무리한 파양은 아이에게도 큰 스트레스가 됩니다. ${brand}는 입소 전 건강 상태와 성향을 확인하고, 위생적인 환경에서 아이 중심의 케어를 이어갑니다. ${kw} 문의는 ${phone}로 안내드립니다.`,
+      `${kw}${eunNeun(kw)} ‘맡기고 끝’이 아니라, 아이가 안락하게 지내고 좋은 가족을 만날 때까지의 과정입니다. ${brand}는 보호자님의 불가피한 사정을 ${tone} 존중하면서도 아이의 안전을 최우선으로 둡니다.`,
+      `이민·이사·건강·주거 문제 등으로 ${kw}${eulReul(kw)} 고민하신다면, 개인 직거래나 검증되지 않은 시설보다 먼저 전화로 절차를 ${verb}받아 보세요. 상담 신청서 없이 ${phone} 한 통이면 충분합니다.`,
+      `과밀 합사·행방 불명·재유기 위험이 있는 선택은 피해야 합니다. ${brand}는 입소 케어, 성향 맞춤 무료분양, 재파양 시 재보호까지 이어지는 책임 분양으로 ${kw} 이후를 지킵니다.`,
     ],
   };
 
-  /* ---------- 핵심 서비스 6개 (순서는 시드 셔플, 처음/끝 고정) ---------- */
   const middleServices = seededShuffle(SERVICE_DEFS.slice(1, 5), seed);
   const orderedServices = [SERVICE_DEFS[0], ...middleServices, SERVICE_DEFS[5]];
   const services = orderedServices.map((svc, i) => ({
-    title: t(pick(svc.titles, seed + i * 7)),
+    title: t(pick(svc.titles, seed + i * 11)),
     description: svc.desc(kw, brand, phone, i % 2 === 0 ? tone : tone2),
   }));
   const servicesTitle = t(pick(SERVICES_H2, seed));
-  const servicesIntro = `${kw} 문의 시 ${brand}가 제공하는 핵심 서비스 6가지를 순서대로 확인해 보세요. 상담부터 사후 관리까지 하나의 흐름으로 이어집니다.`;
+  const servicesIntro = `${kw} 상담 시 ${brand}가 제공하는 6가지 핵심 흐름입니다. 입소 전 상담부터 사후 관리까지 끊기지 않게 이어집니다.`;
 
-  /* ---------- 섹션 2: 보호·시설 안내 ---------- */
   const facilitySection = {
     h2: t(pick(FACILITY_H2, seed2)),
     paragraphs: [
-      `${brand}는 특정 지역 매장 주소 없이 전국파양입소 및 무료분양 기준으로 운영합니다. ${kw} 상담 후 입소가 확정되면, 전국 협력 보호소 네트워크를 통해 깨끗하고 안전한 보호 공간에서 아이를 케어합니다.`,
-      `입소 후에는 산책·목욕·건강 상태 확인 등 일상 케어를 ${tone} 이어가며, 성향과 생활 환경을 고려한 새 가족 매칭을 진행합니다. 무료분양은 책임감 있는 입양을 위해 사전 상담을 거칩니다.`,
-      `보호자님이 가장 궁금해하시는 절차·비용·일정은 전화로 투명하게 ${verb}합니다. ${kw}${eulReul(kw)} 계기로 만난 인연이 아이와 사람 모두에게 안전한 다음 걸음이 되도록 최선을 다합니다.`,
+      `${brand}는 전국 파양입소·무료분양 기준으로 운영하며, ${kw} 입소가 확정되면 아이가 안정적으로 쉴 수 있는 보호 환경에서 케어를 시작합니다.`,
+      `입소 후에는 산책·목욕·식사·건강 상태 확인을 ${tone} 이어가고, 성향을 파악한 뒤 책임 있는 가정과 무료분양으로 연결합니다.`,
+      `보호자님이 궁금해하시는 일정·비용·이동 방법은 전화로 미리 명확히 ${verb}합니다. ${kw}${eulReul(kw)} 계기로 만난 아이가 다시 위기에 놓이지 않도록 최선을 다합니다.`,
     ],
   };
 
-  /* ---------- 세 가지 약속 ---------- */
   const promiseTitles = pick(PROMISE_TITLE_SETS, seed);
   const promiseDescs = [
-    `${kw} 상담은 보호자님의 마음을 먼저 헤아립니다. 아이와 사람 모두를 위한 방법을 함께 찾습니다.`,
-    `입소 이후에도 일상 케어, 무료분양 매칭 연계, 사후 안부 확인까지 꾸준히 지원합니다.`,
-    `보호 과정과 절차를 명확히 알려 드립니다. ${kw} 상담부터 매칭까지 투명한 운영이 신뢰의 시작입니다.`,
+    `${kw} 상담부터 아이 상태와 보호자 상황을 균형 있게 듣고, 무리한 결정을 강요하지 않습니다.`,
+    `입소·보호·매칭 과정을 숨기지 않고 안내하며, 궁금한 점은 ${phone}으로 언제든 확인하실 수 있습니다.`,
+    `입양 후에도 안부를 확인하고, 재파양 시 다시 보호해 새 가족을 찾을 때까지 책임집니다.`,
   ];
   const promises = promiseTitles.map((title, i) => ({
     title,
@@ -417,42 +379,39 @@ export function generateRegionalSeoPage(keyword: string, pageIndex = 1): SeoPage
   }));
   const promisesTitle = t(pick(PROMISE_H2, seed2));
 
-  /* ---------- 4단계 절차 ---------- */
   const processTitle = t(pick(PROCESS_H2, seed3));
   const processSteps = [
     {
       step: "01",
       title: "전화 상담",
-      description: `${kw} 상담 전화(${phone})로 연락 주세요. 아이의 나이, 성격, 파양 사유를 비밀 보장 하에 편안하게 상담해 드립니다.`,
+      description: `${phone}으로 ${kw} 상황을 알려 주세요. 아이 정보와 일정을 기준으로 가능한 방법을 바로 안내합니다.`,
     },
     {
       step: "02",
-      title: "맞춤 절차 안내",
-      description: `보호자님 상황에 맞는 입소·보호 방법을 ${tone} 설명합니다. 급하지 않게 아이에게 가장 나은 길을 함께 고릅니다.`,
+      title: "일정·이동 조율",
+      description: `방문 입소 또는 담당자 방문 픽업 중 맞는 방식을 정합니다. 전국 어디서나 일정 조율이 가능합니다.`,
     },
     {
       step: "03",
-      title: "입소",
-      description: `전국 협력 보호소 연계 공간에 입소하면 정서 안정과 일상 케어가 시작됩니다. ${kw} 이후 건강 확인도 함께 진행됩니다.`,
+      title: "입소·보호 케어",
+      description: `입소 후 안락한 일상 케어가 시작됩니다. ${kw} 이후 스트레스 완화와 건강 확인을 함께 진행합니다.`,
     },
     {
       step: "04",
-      title: "입양 매칭",
-      description: `준비가 되면 책임 있는 가정에 무료분양을 연계합니다. ${kw} 이후에도 입양 가정과의 안부 확인을 이어갑니다.`,
+      title: "책임 분양 매칭",
+      description: `성향에 맞는 가정을 연결하고, 이후에도 안부·재보호까지 지원합니다. 버려지는 반려동물 Zero를 목표로 합니다.`,
     },
   ];
 
-  /* ---------- 관련 검색 의도 섹션 ---------- */
   const relatedSection = {
     h2: t(pick(RELATED_H2, seed3)),
     paragraphs: [
-      `${kw}${eulReul(kw)} 찾아보신 분들은 ${relatedIntents.slice(0, 3).join(", ")} 등도 함께 확인합니다. ${brand}는 이런 궁금증에도 전화 한 통으로 답해 드립니다.`,
-      `아래 키워드는 ${kw}${gwaWa(kw)} 함께 자주 검색되는 관련 검색어입니다. 궁금한 항목이 있다면 상담 시 함께 문의해 주세요.`,
+      `${kw}${eulReul(kw)} 찾는 분들은 ${relatedIntents.slice(0, 3).join(", ")} 같은 주제도 함께 확인합니다. ${brand} 상담 시 같이 물어보시면 됩니다.`,
+      `아래는 ${kw}${gwaWa(kw)} 자주 묶이는 관련 검색어입니다. SEO·상담 모두에서 실제 보호자 질문을 반영했습니다.`,
     ],
   };
 
-  /* ---------- FAQ 6~7개 (질문 배리에이션) ---------- */
-  const faqCount = 6 + (seed % 2); // 6 또는 7
+  const faqCount = 6 + (seed % 2);
   const faqOrder = seededShuffle(
     FAQ_DEFS.map((_, i) => i),
     seed2
@@ -464,12 +423,11 @@ export function generateRegionalSeoPage(keyword: string, pageIndex = 1): SeoPage
   });
 
   const ctaText = t(pick(CTA_TEMPLATES, seed));
-
   const sections: SeoPage["sections"] = [missionSection, facilitySection, relatedSection];
-
   const now = new Date().toISOString();
+
   return {
-    slug: slugifyKeyword(kw, `r${pageIndex}${seed.toString(36).slice(0, 4)}`),
+    slug: slugifyKeyword(kw, `h${pageIndex}${seed.toString(36).slice(0, 4)}`),
     keyword: kw,
     title,
     metaDescription,
@@ -482,7 +440,7 @@ export function generateRegionalSeoPage(keyword: string, pageIndex = 1): SeoPage
     heroBar,
     sections,
     faqs,
-    images: pickImages(6, seed),
+    images: pickImages(6, seed + 17),
     ctaText,
     services,
     servicesTitle,
