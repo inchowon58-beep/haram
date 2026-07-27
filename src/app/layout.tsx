@@ -52,6 +52,14 @@ export const metadata: Metadata = {
     ],
     apple: "/apple-touch-icon.png",
   },
+  verification: {
+    other: {
+      "naver-site-verification": [
+        "075f7e92c998974e14227e305a0c19ded18f58b5",
+        "b6dfca0cbe0557955eebddc842d00f71d644477d",
+      ],
+    },
+  },
   other: {
     "msapplication-TileColor": "#F5C518",
   },
