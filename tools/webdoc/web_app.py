@@ -107,8 +107,10 @@ def index() -> FileResponse:
 
 @app.get("/api/meta")
 def meta() -> dict[str, Any]:
+    root = project_root()
     default_out = os.path.join(webdoc_dir(), "output")
     return {
+        "project_root": root,
         "settings": {
             "site_url": _load_default_site_url(),
             "out_dir": default_out,
@@ -117,7 +119,7 @@ def meta() -> dict[str, Any]:
             "image_base": "https://image.cattery.co.kr/dogboho",
             "image_count": 79,
             "chunk_size": DEFAULT_CHUNK,
-        }
+        },
     }
 
 
@@ -172,7 +174,18 @@ def start_run(body: RunBody) -> dict[str, Any]:
             chunk_size = normalize_chunk_size(body.chunk_size)
 
             _append_log(f"발행 시작 · {len(kws)}건 · 한 번 발행 {chunk_size}건")
+            _append_log(f"프로젝트: {root}")
             _append_log(f"사이트: {site}")
+            if "haram" not in root.replace("\\", "/").lower() and "하람" not in root:
+                _append_log("경고: 프로젝트 경로에 하람보호소가 없습니다. 경로를 확인하세요.")
+            from project_paths import load_blob_token
+
+            if not load_blob_token():
+                _append_log(
+                    "경고: 하람 .env.local 에 BLOB_READ_WRITE_TOKEN 이 없습니다. "
+                    "Vercel(하람 프로젝트) → Storage → Blob 토큰을 넣어 주세요."
+                )
+
             _append_log(
                 f"이미지: {image_url or image_base or '기본 CDN'} "
                 f"(count={image_count or '자동'})"

@@ -1,6 +1,6 @@
 (() => {
   const $ = (id) => document.getElementById(id);
-  const STORAGE_KEY = "dalbit-shelter-seo-settings";
+  const STORAGE_KEY = "haram-shelter-seo-settings";
 
   let pollTimer = null;
   let lastLogLen = 0;
@@ -157,7 +157,24 @@
     try {
       const res = await fetch("/api/meta");
       const meta = await res.json();
-      applySettings({ ...(meta.settings || {}), ...saved });
+      // 서버(하람) 기본값을 우선 — 달빛 localStorage 잔여값으로 사이트/경로가 바뀌지 않게
+      applySettings({
+        ...(saved || {}),
+        ...(meta.settings || {}),
+        last_keywords:
+          saved.last_keywords || (meta.settings && meta.settings.last_keywords) || "",
+        count: saved.count != null ? saved.count : meta.settings?.count,
+        chunk_size: saved.chunk_size || meta.settings?.chunk_size || "40",
+        do_indexnow:
+          typeof saved.do_indexnow === "boolean"
+            ? saved.do_indexnow
+            : meta.settings?.do_indexnow !== false,
+        image_url: saved.image_url || meta.settings?.image_url,
+        image_count: saved.image_count || meta.settings?.image_count,
+      });
+      // 사이트 URL·출력 경로는 항상 하람 서버 메타 기준
+      if (meta.settings?.site_url) $("siteUrl").value = meta.settings.site_url;
+      if (meta.settings?.out_dir) $("outDir").value = meta.settings.out_dir;
     } catch {
       applySettings(saved);
     }
