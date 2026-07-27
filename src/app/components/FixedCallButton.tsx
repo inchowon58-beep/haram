@@ -10,27 +10,16 @@ function PhoneIcon() {
   );
 }
 
-/** 하단 상담 CTA — 파양입소·무료분양 문의 전화 버튼 하나 */
+/** 하단 중앙 상담 CTA — PC/모바일 동일한 둥근 버튼 */
 export default function FixedCallButton() {
   const label = `${CTA_LABEL} : ${SITE.phone}`;
 
   return (
-    <>
-      <div className="haram-floating">
-        <a href={SITE.phoneTel} className="haram-floating-consult" aria-label={label}>
-          <PhoneIcon />
-          <span>{label}</span>
-        </a>
-      </div>
-
-      <div className="haram-floating-mobile">
-        <a href={SITE.phoneTel} className="haram-floating-mobile-consult" aria-label={label}>
-          <PhoneIcon />
-          <span>
-            {CTA_LABEL} : {SITE.phone}
-          </span>
-        </a>
-      </div>
-    </>
+    <div className="haram-floating">
+      <a href={SITE.phoneTel} className="haram-floating-consult" aria-label={label}>
+        <PhoneIcon />
+        <span>{label}</span>
+      </a>
+    </div>
   );
 }
